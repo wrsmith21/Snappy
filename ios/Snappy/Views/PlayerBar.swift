@@ -72,7 +72,8 @@ struct SnapButton: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(Color.accentColor, in: Capsule())
-                .foregroundStyle(.white)
+                // White on the dark green accent in light mode, black on the brighter one in dark mode.
+                .foregroundStyle(Color(uiColor: .systemBackground))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("snap")

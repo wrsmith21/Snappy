@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 200 200">
+  <!-- Snappy app icon: full-bleed square; iOS applies the rounded mask. -->
+  <rect width="200" height="200" fill="#C9F26B"/>
+  <circle cx="100" cy="76" r="26" fill="#9BE3B5" stroke="#13322A" stroke-width="5"/>
+  <circle cx="89" cy="68" r="8" fill="#FFFFFF"/>
+  <circle cx="111" cy="68" r="8" fill="#FFFFFF"/>
+  <circle cx="90.5" cy="66.5" r="4.2" fill="#13322A"/>
+  <circle cx="112.5" cy="66.5" r="4.2" fill="#13322A"/>
+  <path d="M90 80 Q100 94 110 80 Z" fill="#13322A"/>
+  <path d="M94 84 Q100 89 106 84 Q100 82.5 94 84 Z" fill="#FF7A59"/>
+  <path d="M96 80 L100 85 L104 80 Z" fill="#9BE3B5"/>
+  <path d="M137 64 Q144 74 137 84" fill="none" stroke="#13322A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M147 58 Q158 74 147 90" fill="none" stroke="#13322A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M34 150 A66 62 0 0 1 166 150 Z" fill="#13322A"/>
+  <rect x="26" y="144" width="148" height="16" rx="8" fill="#13322A"/>
+  <ellipse cx="66" cy="166" rx="14" ry="9" fill="#9BE3B5" stroke="#13322A" stroke-width="4"/>
+  <ellipse cx="134" cy="166" rx="14" ry="9" fill="#9BE3B5" stroke="#13322A" stroke-width="4"/>
+  <polyline points="52,124 70,124 80,108 92,138 104,112 114,124 148,124" fill="none" stroke="#C9F26B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

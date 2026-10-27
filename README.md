@@ -40,6 +40,7 @@ ios/
     Sources/          models, RSS parser, podcast search, clip window, snap storage
     Tests/
 docs/FEASIBILITY.md   research: what exists, what each platform allows
+docs/brand/           logo SVGs (app icon source and rounded logo)
 ```
 
 ## Running it

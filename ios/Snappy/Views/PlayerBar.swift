@@ -19,7 +19,7 @@ struct PlayerBar: View {
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
                         if player.clipEnd != nil {
-                            Button("Replaying · Keep listening") { player.keepListening() }
+                            Button("Keep listening ›") { player.keepListening() }
                                 .font(.caption)
                                 .lineLimit(1)
                                 .buttonStyle(.borderless)

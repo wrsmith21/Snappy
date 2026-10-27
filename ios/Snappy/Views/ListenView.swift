@@ -35,8 +35,8 @@ struct ListenView: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search podcasts")
             .task(id: query) { await search() }
             .navigationDestination(for: Podcast.self) { ShowView(podcast: $0) }
-            .withPlayerBar()
         }
+        .withPlayerBar()
     }
 
     private func search() async {

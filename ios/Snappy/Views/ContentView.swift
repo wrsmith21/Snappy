@@ -53,7 +53,8 @@ private struct SnapToast: View {
 }
 
 extension View {
-    /// Pins the mini player above the tab bar.
+    /// Pins the mini player above the tab bar. Apply it outside a `NavigationStack` so it stays
+    /// visible on every screen pushed onto the stack.
     func withPlayerBar() -> some View {
         safeAreaInset(edge: .bottom, spacing: 0) { PlayerBar() }
     }

@@ -31,8 +31,8 @@ struct SnapsView: View {
                 .accessibilityLabel("Settings")
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
-            .withPlayerBar()
         }
+        .withPlayerBar()
     }
 }
 

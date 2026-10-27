@@ -61,6 +61,7 @@ private struct SnapRow: View {
                     Button { player.playClip(snap) } label: {
                         Label("Play", systemImage: "play.circle.fill")
                     }
+                    .accessibilityIdentifier("playSnap")
                     ShareLink(item: snap.sourceURL, message: Text(snap.shareText)) {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }

@@ -14,6 +14,7 @@ struct ListenView: View {
                 NavigationLink(value: podcast) {
                     PodcastRow(podcast: podcast)
                 }
+                .accessibilityIdentifier("podcast")
             }
             .overlay {
                 if isSearching && results.isEmpty {
@@ -31,7 +32,7 @@ struct ListenView: View {
                 }
             }
             .navigationTitle("Listen")
-            .searchable(text: $query, prompt: "Search podcasts")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search podcasts")
             .task(id: query) { await search() }
             .navigationDestination(for: Podcast.self) { ShowView(podcast: $0) }
             .withPlayerBar()

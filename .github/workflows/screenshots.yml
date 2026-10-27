@@ -1,0 +1,77 @@
+name: Screenshots
+
+# Runs the UI flow test on a simulator and publishes its screenshots to the `screenshots` branch.
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [screenshots]
+    paths:
+      - "ios/**"
+      - ".github/workflows/screenshots.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available | grep -m1 -E '^ +iPhone 1[5-9] (Pro )?\(' | grep -oE '[0-9A-F-]{36}')
+          echo "Using simulator $UDID"
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID"
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+
+      - name: Run UI flow
+        run: |
+          xcodebuild test \
+            -project Snappy.xcodeproj \
+            -scheme Snappy \
+            -destination "id=$UDID" \
+            -resultBundlePath Flow.xcresult \
+            -quiet
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          mkdir -p raw shots
+          xcrun xcresulttool export attachments --path Flow.xcresult --output-path raw
+          # Name each file after its attachment ("01-listen.png", ...).
+          python3 - <<'EOF'
+          import json, pathlib, re, shutil
+          raw = pathlib.Path("raw")
+          for test in json.loads((raw / "manifest.json").read_text()):
+              for a in test["attachments"]:
+                  name = re.sub(r"_\d+_[0-9A-F-]{36}", "", a["suggestedHumanReadableName"])
+                  shutil.copy(raw / a["exportedFileName"], pathlib.Path("shots") / name)
+          EOF
+          ls -l shots
+
+      - name: Publish to screenshots branch
+        if: always()
+        working-directory: ios/shots
+        run: |
+          git init -q -b screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "Screenshots from ${GITHUB_SHA} (${GITHUB_REF_NAME})" > README.md
+          git add -A
+          git commit -q -m "Screenshots from ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" screenshots

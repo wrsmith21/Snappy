@@ -74,6 +74,7 @@ struct SnapButton: View {
                 .foregroundStyle(.white)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("snap")
         .accessibilityHint("Saves the last few seconds of this episode")
     }
 }

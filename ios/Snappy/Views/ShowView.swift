@@ -33,6 +33,7 @@ struct ShowView: View {
                             EpisodeRow(episode: episode, isCurrent: player.episode?.guid == episode.guid)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("episode")
                     }
                 }
             }

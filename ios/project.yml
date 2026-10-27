@@ -36,4 +36,19 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
     scheme:
-      testTargets: []
+      testTargets:
+        - SnappyUITests
+
+  SnappyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - SnappyUITests
+    dependencies:
+      - target: Snappy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wrsmith21.snappy.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"

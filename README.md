@@ -1,26 +1,72 @@
 # Snappy
 
-**Screenshot for sound.** Press a button while anything is playing, a podcast, a song or an audiobook, and Snappy saves that moment. Each "snap" keeps the cover art, the title, the author or artist, the timestamp, and a link that opens the source at that exact moment.
+**Screenshot for sound.** Press a button while a podcast is playing, and Snappy saves that moment. Each "snap" keeps the cover art, the show and host, the episode, the timestamp, and a link back to where it came from.
 
 ## The idea
 
 | Screenshot (today) | Snappy |
 | --- | --- |
-| Press side + volume buttons | Press the Action Button / Back Tap / a Quick Settings tile |
-| Saves what's on screen | Saves the last ~30s of what you're hearing |
-| Lands in Photos | Lands in a Snappy gallery with cover art, credits and a deep link |
+| Press side + volume buttons | Press **Snap**, double-tap your AirPods, or use the Action Button / Back Tap / Siri |
+| Saves what's on screen | Saves the last 30 seconds of what you're hearing |
+| Lands in Photos | Lands in a Snappy gallery with cover art, credits and a link to the source |
 
 A snap always shows where it came from. Attribution and a link back to the original are built in, not optional.
 
-## What a snap contains
+## Status: iPhone, podcasts first
 
-- **Cover art** for the episode, album or audiobook
-- **Credits**: show/host, artist, author or narrator
-- **Source app** (Spotify, Apple Podcasts, Overcast, Audible, YouTube…)
-- **Timestamp** and a **deep link** that resumes playback at that point
-- **Audio clip** where it is legal and technically possible (see below)
-- *(later)* Transcript of the clip, notes, tags, share card
+The first version is an iPhone app with a built-in podcast player. iOS doesn't let apps see what other apps are playing (see [`docs/FEASIBILITY.md`](docs/FEASIBILITY.md)), so you listen inside Snappy, and Snappy always knows exactly what to snap.
 
-## Status
+What works in v0.1:
 
-Concept and feasibility stage. See [`docs/FEASIBILITY.md`](docs/FEASIBILITY.md) for the landscape, what each platform allows, and the proposed MVP.
+- **Search** any podcast (iTunes Search API) and browse its episodes from the RSS feed
+- **Play** in the background with lock screen / Control Center controls
+- **Snap** from:
+  - the Snap button in the mini player
+  - your headphones' "next track" gesture (double-tap AirPods); can be turned off in Settings
+  - the **Action Button**, **Back Tap** or **Siri** ("Snap that in Snappy") through the app's Shortcut, without opening the app
+- **Gallery** of snaps showing cover art, episode, show · host, time range, and when you snapped it
+  - **Play** replays just that clip, then **Keep listening** carries on from there
+  - **Share** sends the source link with a credit line: `🎧 "Episode" — Show · Host [12:04–12:34]`
+  - **Source** opens the episode page (or the show's Apple Podcasts page)
+- Snap length: 15, 30 or 60 seconds
+
+## Project layout
+
+```
+ios/
+  project.yml         XcodeGen spec for the app (generates Snappy.xcodeproj)
+  Snappy/             SwiftUI app: player, snap intent, views
+  SnappyCore/         Swift package with the app's logic, unit tested
+    Sources/          models, RSS parser, podcast search, clip window, snap storage
+    Tests/
+docs/FEASIBILITY.md   research: what exists, what each platform allows
+```
+
+## Running it
+
+You need a Mac with Xcode 16+.
+
+```sh
+brew install xcodegen
+cd ios
+xcodegen generate
+open Snappy.xcodeproj
+```
+
+Choose your team under *Signing & Capabilities*, then run on an iPhone or the simulator. AirPods gestures and the Action Button only work on a real device.
+
+Run the core tests:
+
+```sh
+cd ios/SnappyCore && swift test
+```
+
+CI (`.github/workflows/ios.yml`) runs those tests and builds the app on every push that touches `ios/`.
+
+## Next up
+
+- Control Center and Lock Screen **Snap** button (iOS 18 control widget)
+- Export a snap as an audio file / share card (cover art + waveform)
+- Transcripts of each clip, notes and tags
+- Subscriptions and a "continue listening" list
+- Android, which can snap from *other* podcast apps (see feasibility notes)

@@ -19,8 +19,9 @@ struct PlayerBar: View {
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
                         if player.clipEnd != nil {
-                            Button("Replaying snap · Keep listening") { player.keepListening() }
+                            Button("Replaying · Keep listening") { player.keepListening() }
                                 .font(.caption)
+                                .lineLimit(1)
                                 .buttonStyle(.borderless)
                         } else {
                             Text("\(Timecode.string(player.currentTime)) · \(podcast.title)")

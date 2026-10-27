@@ -57,7 +57,7 @@ private struct SnapRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                HStack(spacing: 20) {
+                HStack(spacing: 28) {
                     Button { player.playClip(snap) } label: {
                         Label("Play", systemImage: "play.circle.fill")
                     }
@@ -69,7 +69,8 @@ private struct SnapRow: View {
                         Label("Source", systemImage: "arrow.up.right.square")
                     }
                 }
-                .font(.subheadline)
+                .labelStyle(.iconOnly)
+                .font(.title3)
                 // Separate tap targets inside a List row.
                 .buttonStyle(.borderless)
                 .padding(.top, 4)

@@ -34,7 +34,7 @@ enum ClipVideoMaker {
         card: CGImage,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
-        let audioURL = try await exportAudio(from: snap.episode.audioURL, range: range)
+        let audioURL = try await clipAudio(for: snap.episode, range: range)
         defer { try? FileManager.default.removeItem(at: audioURL) }
         progress(0.3)
 
@@ -46,9 +46,75 @@ enum ClipVideoMaker {
         return videoURL
     }
 
-    /// Cuts the clip's stretch out of the episode, streamed from the publisher, into a local M4A.
-    private static func exportAudio(from episodeURL: URL, range: ClipWindow) async throws -> URL {
-        let asset = AVURLAsset(url: episodeURL)
+    /// Downloads the episode from the publisher up to just past the clip (the exporter can't cut
+    /// from a remote file) and cuts the clip out of it. Falls back to the whole file when the
+    /// partial one can't be read, e.g. an M4A whose index sits at the end.
+    private static func clipAudio(for episode: Episode, range: ClipWindow) async throws -> URL {
+        let partial = try await download(episode, through: range.end)
+        defer { try? FileManager.default.removeItem(at: partial.file) }
+        do {
+            return try await exportAudio(from: partial.file, range: range)
+        } catch where partial.isPartial {
+            let whole = try await download(episode, through: nil)
+            defer { try? FileManager.default.removeItem(at: whole.file) }
+            return try await exportAudio(from: whole.file, range: range)
+        }
+    }
+
+    /// Downloads the episode's audio, or only its first part when `end` is given and the size and
+    /// duration are known: enough bytes to reach `end` plus a margin, assuming a steady bitrate.
+    private static func download(_ episode: Episode, through end: TimeInterval?) async throws -> (file: URL, isPartial: Bool) {
+        let url = episode.audioURL.upgradedToHTTPS
+        var request = URLRequest(url: url)
+        var isPartial = false
+
+        if let end, let duration = episode.duration, duration > 0, end < duration - 30,
+           let total = await contentLength(of: url) {
+            let fraction = min(1, (end + 20) / duration)
+            let lastByte = min(total - 1, Int64(Double(total) * fraction * 1.05) + 512 * 1024)
+            if lastByte < total - 1 {
+                request.setValue("bytes=0-\(lastByte)", forHTTPHeaderField: "Range")
+                isPartial = true
+            }
+        }
+
+        let (downloaded, response) = try await URLSession.shared.download(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            try? FileManager.default.removeItem(at: downloaded)
+            throw Failure.audio("The podcast's server didn't send the audio.")
+        }
+        // A server that ignores Range sends the whole file.
+        if http.statusCode == 200 { isPartial = false }
+
+        let file = FileManager.default.temporaryDirectory
+            .appending(path: "snappy-\(UUID().uuidString).\(audioExtension(for: url, mimeType: response.mimeType))")
+        try FileManager.default.moveItem(at: downloaded, to: file)
+        return (file, isPartial)
+    }
+
+    private static func contentLength(of url: URL) async -> Int64? {
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        let result = try? await URLSession.shared.data(for: request)
+        guard let length = result?.1.expectedContentLength, length > 0 else { return nil }
+        return length
+    }
+
+    /// AVFoundation picks the parser from the file extension.
+    private static func audioExtension(for url: URL, mimeType: String?) -> String {
+        let known = ["mp3", "m4a", "mp4", "aac", "wav"]
+        if known.contains(url.pathExtension.lowercased()) { return url.pathExtension.lowercased() }
+        switch mimeType?.lowercased() {
+        case "audio/mp4", "audio/x-m4a", "audio/m4a": return "m4a"
+        case "audio/aac", "audio/aacp": return "aac"
+        case "audio/wav", "audio/x-wav": return "wav"
+        default: return "mp3"
+        }
+    }
+
+    /// Cuts the clip's stretch out of a local audio file into an M4A.
+    private static func exportAudio(from audioFile: URL, range: ClipWindow) async throws -> URL {
+        let asset = AVURLAsset(url: audioFile)
         guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
             throw Failure.audio("This episode's audio format isn't supported.")
         }

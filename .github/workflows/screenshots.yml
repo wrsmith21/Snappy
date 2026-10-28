@@ -19,6 +19,7 @@ concurrency:
 jobs:
   screenshots:
     runs-on: macos-15
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: ios
@@ -40,6 +41,7 @@ jobs:
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
 
       - name: Run UI flow
+        timeout-minutes: 20
         run: |
           xcodebuild test \
             -project Snappy.xcodeproj \
@@ -47,6 +49,10 @@ jobs:
             -destination "id=$UDID" \
             -resultBundlePath Flow.xcresult \
             -quiet
+
+      - name: Summarize test results
+        if: always()
+        run: xcrun xcresulttool get test-results summary --path Flow.xcresult --compact || true
 
       - name: Export screenshots
         if: always()

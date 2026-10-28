@@ -99,7 +99,10 @@ struct SnapButton: View {
     @ViewBuilder
     private var label: some View {
         if let start = player.snapStart {
-            Label("Stop \(Timecode.string(max(0, player.currentTime - start)))", systemImage: "stop.fill")
+            Label(Timecode.string(max(0, player.currentTime - start)), systemImage: "stop.fill")
+                .lineLimit(1)
+                .fixedSize()
+                .accessibilityLabel("Stop snap")
         } else {
             Label("Snap", systemImage: "waveform.badge.plus")
         }

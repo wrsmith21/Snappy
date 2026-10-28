@@ -24,7 +24,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Snap from anywhere")
                 } footer: {
-                    Text("Each one starts a snap the first time and saves it the second. Long-press the Stop button to discard a snap.")
+                    Text("Each one starts a snap the first time and saves it the second. Long-press the red stop button to discard a snap.")
                 }
             }
             .navigationTitle("Settings")

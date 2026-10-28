@@ -19,7 +19,7 @@ struct SnapsView: View {
                     ContentUnavailableView(
                         "No snaps yet",
                         systemImage: "waveform.badge.plus",
-                        description: Text("While an episode plays, press Snap, double-tap your AirPods, or use the Action Button to save the last \(Int(SnapSettings.lookback)) seconds.")
+                        description: Text("While an episode plays, press Snap where you want the clip to start and Stop where it ends. Double-tapping your AirPods or the Action Button work too.")
                     )
                 }
             }

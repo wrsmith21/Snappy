@@ -26,18 +26,22 @@ final class SnapFlowUITests: XCTestCase {
         pause(3)
         screenshot("03-show", of: app)
 
-        // Listen for a bit, then snap.
+        // Listen for a bit, then snap: press once to start, again to stop.
         episodes.element(boundBy: 0).tap()
         let snapButton = app.buttons["snap"]
         XCTAssertTrue(snapButton.waitForExistence(timeout: 10))
-        pause(25)
-        screenshot("04-playing", of: app)
+        pause(10)
+        snapButton.tap()
+        pause(12)
+        screenshot("04-snapping", of: app)
         snapButton.tap()
         screenshot("05-snapped", of: app)
 
         // A second snap from another episode, so the gallery has some variety.
         episodes.element(boundBy: 1).tap()
-        pause(15)
+        pause(6)
+        snapButton.tap()
+        pause(8)
         snapButton.tap()
         pause(3)
 

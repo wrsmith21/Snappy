@@ -7,7 +7,7 @@
 | Screenshot (today) | Snappy |
 | --- | --- |
 | Press side + volume buttons | Press **Snap**, double-tap your AirPods, or use the Action Button / Back Tap / Siri |
-| Saves what's on screen | Saves the last 30 seconds of what you're hearing |
+| Saves what's on screen | Saves exactly the stretch you mark: press to start, press again to stop |
 | Lands in Photos | Lands in a Snappy gallery with cover art, credits and a link to the source |
 
 A snap always shows where it came from. Attribution and a link back to the original are built in, not optional.
@@ -20,7 +20,7 @@ What works in v0.1:
 
 - **Search** any podcast (iTunes Search API) and browse its episodes from the RSS feed
 - **Play** in the background with lock screen / Control Center controls
-- **Snap** from:
+- **Snap** like a stopwatch: press once where the clip should start and again where it ends (long-press Stop to discard). Works from:
   - the Snap button in the mini player
   - your headphones' "next track" gesture (double-tap AirPods); can be turned off in Settings
   - the **Action Button**, **Back Tap** or **Siri** ("Snap that in Snappy") through the app's Shortcut, without opening the app
@@ -28,7 +28,6 @@ What works in v0.1:
   - **Play** replays just that clip, then **Keep listening** carries on from there
   - **Share** sends the source link with a credit line: `🎧 "Episode" — Show · Host [12:04–12:34]`
   - **Source** opens the episode page (or the show's Apple Podcasts page)
-- Snap length: 15, 30 or 60 seconds
 
 ## Project layout
 

@@ -10,19 +10,25 @@ public struct ClipWindow: Equatable, Sendable {
         self.end = end
     }
 
-    /// Like a screenshot, a snap captures what just happened: the `lookback` seconds before `position`.
-    /// Near the start of an episode the window is stretched forward so it's at least `minimumLength` long,
-    /// and it never runs past `episodeDuration` when that's known.
-    public static func ending(
-        at position: TimeInterval,
-        lookback: TimeInterval = 30,
-        minimumLength: TimeInterval = 10,
+    /// The clip between where the listener started and stopped snapping. The two points can come
+    /// in either order (they may have skipped back mid-snap). A clip shorter than `minimumLength`
+    /// is stretched forward, and nothing runs past `episodeDuration` when that's known.
+    public static func between(
+        _ first: TimeInterval,
+        _ second: TimeInterval,
+        minimumLength: TimeInterval = 1,
         episodeDuration: TimeInterval? = nil
     ) -> ClipWindow {
         let duration = episodeDuration.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
-        var end = max(0, position.isFinite ? position : 0)
-        if let duration { end = min(end, duration) }
-        var start = max(0, end - lookback)
+        func clamp(_ time: TimeInterval) -> TimeInterval {
+            let time = time.isFinite ? max(0, time) : 0
+            return duration.map { min(time, $0) } ?? time
+        }
+
+        let a = clamp(first)
+        let b = clamp(second)
+        var start = min(a, b)
+        var end = max(a, b)
 
         if end - start < minimumLength {
             end = start + minimumLength

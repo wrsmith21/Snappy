@@ -9,7 +9,7 @@ struct PlayerBar: View {
         if let episode = player.episode, let podcast = player.podcast {
             VStack(spacing: 8) {
                 ProgressView(value: progress)
-                    .tint(player.clipEnd == nil ? Color.accentColor : Color.orange)
+                    .tint(progressTint)
 
                 HStack(spacing: 12) {
                     ArtworkView(url: episode.artworkURL ?? podcast.artworkURL, size: 44)
@@ -18,7 +18,12 @@ struct PlayerBar: View {
                         Text(episode.title)
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
-                        if player.clipEnd != nil {
+                        if let start = player.snapStart {
+                            Label("Snapping from \(Timecode.string(start))", systemImage: "record.circle")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.snapRecording)
+                                .lineLimit(1)
+                        } else if player.clipEnd != nil {
                             Button("Keep listening ›") { player.keepListening() }
                                 .font(.caption)
                                 .lineLimit(1)
@@ -59,24 +64,49 @@ struct PlayerBar: View {
         guard let duration = player.duration, duration > 0 else { return 0 }
         return min(1, player.currentTime / duration)
     }
+
+    private var progressTint: Color {
+        if player.isSnapping { return .snapRecording }
+        return player.clipEnd == nil ? .accentColor : .orange
+    }
 }
 
-/// The app's "shutter": saves the last few seconds of what's playing.
+/// The app's "shutter": press to start a snap, press again to stop and save it.
 struct SnapButton: View {
     @Environment(PlayerController.self) private var player
 
     var body: some View {
-        Button { _ = player.snap() } label: {
-            Label("Snap", systemImage: "waveform.badge.plus")
+        Button { _ = player.toggleSnap() } label: {
+            label
                 .font(.subheadline.weight(.bold))
+                .monospacedDigit()
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(Color.accentColor, in: Capsule())
-                // White on the dark green accent in light mode, black on the brighter one in dark mode.
-                .foregroundStyle(Color(uiColor: .systemBackground))
+                .background(player.isSnapping ? Color.snapRecording : Color.accentColor, in: Capsule())
+                // On the green accent: white in light mode, black on the brighter dark-mode green.
+                .foregroundStyle(player.isSnapping ? Color.white : Color(uiColor: .systemBackground))
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            if player.isSnapping {
+                Button("Discard Snap", systemImage: "trash", role: .destructive) { player.cancelSnap() }
+            }
+        }
         .accessibilityIdentifier("snap")
-        .accessibilityHint("Saves the last few seconds of this episode")
+        .accessibilityHint(player.isSnapping ? "Saves the snap" : "Starts a snap from this moment")
     }
+
+    @ViewBuilder
+    private var label: some View {
+        if let start = player.snapStart {
+            Label("Stop \(Timecode.string(max(0, player.currentTime - start)))", systemImage: "stop.fill")
+        } else {
+            Label("Snap", systemImage: "waveform.badge.plus")
+        }
+    }
+}
+
+extension Color {
+    /// Deep red for a snap in progress; white text on it passes contrast in light and dark mode.
+    static let snapRecording = Color(red: 0.70, green: 0.15, blue: 0.12)
 }

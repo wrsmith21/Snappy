@@ -17,6 +17,8 @@ final class PlayerController {
     private(set) var duration: TimeInterval?
     /// Set while replaying a snap: playback pauses here unless the listener chooses to keep going.
     private(set) var clipEnd: TimeInterval?
+    /// Where the snap in progress began; nil when not snapping.
+    private(set) var snapStart: TimeInterval?
     /// The most recent snap, shown briefly as a confirmation.
     var lastSnap: Snap?
 
@@ -35,12 +37,37 @@ final class PlayerController {
 
     // MARK: - Snapping
 
-    /// Saves the last few seconds of the current episode. Returns nil when nothing is loaded.
-    @discardableResult
-    func snap() -> Snap? {
-        guard let episode, let podcast, player.currentItem != nil else { return nil }
+    enum SnapAction {
+        case started(at: TimeInterval)
+        case saved(Snap)
+    }
 
-        let window = ClipWindow.ending(at: currentPosition, lookback: SnapSettings.lookback, episodeDuration: duration)
+    var isSnapping: Bool { snapStart != nil }
+
+    /// Snapping works like a stopwatch: the first press marks the start, the second saves
+    /// everything in between. Returns nil when nothing is loaded.
+    @discardableResult
+    func toggleSnap() -> SnapAction? {
+        if isSnapping {
+            return finishSnap().map(SnapAction.saved)
+        }
+        guard player.currentItem != nil else { return nil }
+        let start = currentPosition
+        snapStart = start
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        return .started(at: start)
+    }
+
+    /// Discards the snap in progress without saving it.
+    func cancelSnap() {
+        snapStart = nil
+    }
+
+    private func finishSnap() -> Snap? {
+        guard let start = snapStart, let episode, let podcast else { return nil }
+        snapStart = nil
+
+        let window = ClipWindow.between(start, currentPosition, episodeDuration: duration)
         let snap = Snap(podcast: podcast, episode: episode, start: window.start, end: window.end)
         SnapLibrary.shared.add(snap)
         lastSnap = snap
@@ -62,6 +89,7 @@ final class PlayerController {
 
     /// Replays a snap, pausing at its end.
     func playClip(_ snap: Snap) {
+        cancelSnap()
         load(snap.episode, of: snap.podcast)
         seek(to: snap.start)
         setClipEnd(snap.end)
@@ -110,6 +138,8 @@ final class PlayerController {
     private func load(_ episode: Episode, of podcast: Podcast) {
         guard episode.guid != self.episode?.guid || player.currentItem == nil else { return }
 
+        // A snap can't span two episodes.
+        cancelSnap()
         player.replaceCurrentItem(with: AVPlayerItem(url: episode.audioURL))
         self.episode = episode
         self.podcast = podcast
@@ -186,8 +216,8 @@ final class PlayerController {
             return .success
         }
 
-        // The headphones' "next track" gesture (e.g. double-tapping AirPods) takes a snap instead.
-        handle(center.nextTrackCommand) { _ = $0.snap() }
+        // The headphones' "next track" gesture (e.g. double-tapping AirPods) starts and stops a snap instead.
+        handle(center.nextTrackCommand) { _ = $0.toggleSnap() }
         center.nextTrackCommand.isEnabled = SnapSettings.headphoneSnapEnabled
         center.previousTrackCommand.isEnabled = false
     }

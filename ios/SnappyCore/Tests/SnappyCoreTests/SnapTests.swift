@@ -41,6 +41,20 @@ final class SnapTests: XCTestCase {
         XCTAssertEqual(makeSnap().sourceURL, feedURL)
     }
 
+    func testShareCaptionCarriesTheLink() {
+        let snap = makeSnap(webURL: URL(string: "https://example.com/episodes/1"))
+        XCTAssertEqual(
+            snap.shareCaption,
+            "🎧 “Pilot” — The Example Show · Jane Host [12:04–12:34]\nListen to the full episode: https://example.com/episodes/1"
+        )
+    }
+
+    func testSharedRangeIsCapped() {
+        let snap = makeSnap()
+        XCTAssertEqual(snap.sharedRange(maxLength: 60), ClipWindow(start: 724, end: 754))
+        XCTAssertEqual(snap.sharedRange(maxLength: 10), ClipWindow(start: 724, end: 734))
+    }
+
     func testArtworkFallsBackToShow() {
         XCTAssertEqual(makeSnap().artworkURL, URL(string: "https://example.com/show.jpg"))
         XCTAssertEqual(makeSnap().length, 30)

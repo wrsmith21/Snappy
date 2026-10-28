@@ -101,4 +101,12 @@ public struct Snap: Codable, Hashable, Identifiable, Sendable {
 
     /// Text that goes with the source link when a snap is shared.
     public var shareText: String { "🎧 “\(episode.title)” — \(creditLine) [\(timeRangeText)]" }
+
+    /// Caption for a shared video clip: the credit plus the link, since the video itself can't carry a link.
+    public var shareCaption: String { "\(shareText)\nListen to the full episode: \(sourceURL.absoluteString)" }
+
+    /// The part of the snap that goes into a shared video: at most `maxLength` seconds from its start.
+    public func sharedRange(maxLength: TimeInterval) -> ClipWindow {
+        ClipWindow(start: start, end: min(end, start + maxLength))
+    }
 }

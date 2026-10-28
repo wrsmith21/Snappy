@@ -59,6 +59,13 @@ final class SnapFlowUITests: XCTestCase {
         app.navigationBars.buttons["Settings"].tap()
         pause(2)
         screenshot("08-settings", of: app)
+        app.buttons["Done"].tap()
+
+        // Turn the newest snap into a shareable video clip.
+        app.buttons.matching(identifier: "shareSnap").firstMatch.tap()
+        app.buttons["Share Video Clip"].tap()
+        XCTAssertTrue(app.buttons["Share Video"].waitForExistence(timeout: 120), "Clip video wasn't made")
+        screenshot("09-share-clip", of: app)
     }
 
     @MainActor

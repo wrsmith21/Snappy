@@ -40,6 +40,7 @@ private struct SnapRow: View {
     let snap: Snap
 
     @Environment(PlayerController.self) private var player
+    @State private var sharingVideo = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -62,9 +63,15 @@ private struct SnapRow: View {
                         Label("Play", systemImage: "play.circle.fill")
                     }
                     .accessibilityIdentifier("playSnap")
-                    ShareLink(item: snap.sourceURL, message: Text(snap.shareText)) {
+                    Menu {
+                        Button("Share Video Clip", systemImage: "film") { sharingVideo = true }
+                        ShareLink(item: snap.sourceURL, message: Text(snap.shareText)) {
+                            Label("Share Link", systemImage: "link")
+                        }
+                    } label: {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
+                    .accessibilityIdentifier("shareSnap")
                     Link(destination: snap.sourceURL) {
                         Label("Source", systemImage: "arrow.up.right.square")
                     }
@@ -77,5 +84,6 @@ private struct SnapRow: View {
             }
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $sharingVideo) { ClipShareSheet(snap: snap) }
     }
 }

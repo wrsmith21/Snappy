@@ -1,0 +1,205 @@
+import AVFoundation
+import CoreGraphics
+import SnappyCore
+import UIKit
+
+/// Turns a snap into a square MP4: the clip's audio over a card with cover art, credits and a
+/// progress bar. Social apps like LinkedIn take video but not bare audio files.
+enum ClipVideoMaker {
+    /// Shared clips stay short, like other podcast apps' clip sharing.
+    static let maxLength: TimeInterval = 60
+
+    /// Where the progress bar sits on the 1080×1080 card, in top-left coordinates.
+    static let progressBar = CGRect(x: 120, y: 916, width: 840, height: 16)
+
+    private static let framesPerSecond: Int32 = 10
+    private static let size = Int(ClipCardView.size)
+
+    enum Failure: LocalizedError {
+        case audio(String)
+        case video(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .audio(let reason): "Couldn't get the clip's audio. \(reason)"
+            case .video(let reason): "Couldn't make the video. \(reason)"
+            }
+        }
+    }
+
+    /// Builds the video for `range` of `snap` over `card`, reporting progress from 0 to 1.
+    static func makeVideo(
+        for snap: Snap,
+        range: ClipWindow,
+        card: CGImage,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> URL {
+        let audioURL = try await exportAudio(from: snap.episode.audioURL, range: range)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        progress(0.3)
+
+        let videoURL = FileManager.default.temporaryDirectory.appending(path: fileName(for: snap))
+        try? FileManager.default.removeItem(at: videoURL)
+        try await writeVideo(to: videoURL, card: card, audioURL: audioURL, length: range.end - range.start) { fraction in
+            progress(0.3 + 0.7 * fraction)
+        }
+        return videoURL
+    }
+
+    /// Cuts the clip's stretch out of the episode, streamed from the publisher, into a local M4A.
+    private static func exportAudio(from episodeURL: URL, range: ClipWindow) async throws -> URL {
+        let asset = AVURLAsset(url: episodeURL)
+        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            throw Failure.audio("This episode's audio format isn't supported.")
+        }
+        let outputURL = FileManager.default.temporaryDirectory.appending(path: "snappy-\(UUID().uuidString).m4a")
+        session.outputURL = outputURL
+        session.outputFileType = .m4a
+        session.timeRange = CMTimeRange(
+            start: CMTime(seconds: range.start, preferredTimescale: 600),
+            end: CMTime(seconds: range.end, preferredTimescale: 600)
+        )
+        await session.export()
+        guard session.status == .completed else {
+            throw Failure.audio(session.error?.localizedDescription ?? "The download didn't finish.")
+        }
+        return outputURL
+    }
+
+    private static func writeVideo(
+        to outputURL: URL,
+        card: CGImage,
+        audioURL: URL,
+        length: TimeInterval,
+        progress: (Double) -> Void
+    ) async throws {
+        let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mp4)
+
+        let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: size,
+            AVVideoHeightKey: size,
+        ])
+        videoInput.expectsMediaDataInRealTime = false
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: videoInput, sourcePixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: size,
+            kCVPixelBufferHeightKey as String: size,
+        ])
+        writer.add(videoInput)
+
+        // The exported M4A is already AAC, so its samples pass straight through.
+        let audioAsset = AVURLAsset(url: audioURL)
+        guard let audioTrack = try await audioAsset.loadTracks(withMediaType: .audio).first else {
+            throw Failure.audio("The clip has no sound.")
+        }
+        let reader = try AVAssetReader(asset: audioAsset)
+        let audioOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: nil)
+        reader.add(audioOutput)
+        let formatHint = try await audioTrack.load(.formatDescriptions).first
+        let audioInput = AVAssetWriterInput(mediaType: .audio, outputSettings: nil, sourceFormatHint: formatHint)
+        audioInput.expectsMediaDataInRealTime = false
+        writer.add(audioInput)
+
+        guard writer.startWriting(), reader.startReading() else {
+            throw Failure.video(writer.error?.localizedDescription ?? reader.error?.localizedDescription ?? "")
+        }
+        writer.startSession(atSourceTime: .zero)
+
+        let frameCount = max(1, Int((length * Double(framesPerSecond)).rounded(.up)))
+        var frame = 0
+        var videoDone = false
+        var audioDone = false
+
+        // Feed both tracks in turn: the writer interleaves them and stalls one that runs ahead.
+        while !(videoDone && audioDone) {
+            var fedSomething = false
+
+            if !videoDone, videoInput.isReadyForMoreMediaData {
+                if frame < frameCount {
+                    let fraction = frameCount > 1 ? Double(frame) / Double(frameCount - 1) : 1
+                    guard let pool = adaptor.pixelBufferPool, let buffer = makeFrame(card: card, progress: fraction, pool: pool) else {
+                        throw Failure.video("Couldn't draw a frame.")
+                    }
+                    adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: framesPerSecond))
+                    frame += 1
+                    progress(Double(frame) / Double(frameCount))
+                } else {
+                    videoInput.markAsFinished()
+                    videoDone = true
+                }
+                fedSomething = true
+            }
+
+            if !audioDone, audioInput.isReadyForMoreMediaData {
+                if let sample = audioOutput.copyNextSampleBuffer() {
+                    audioInput.append(sample)
+                } else {
+                    if reader.status == .failed {
+                        throw Failure.audio(reader.error?.localizedDescription ?? "")
+                    }
+                    audioInput.markAsFinished()
+                    audioDone = true
+                }
+                fedSomething = true
+            }
+
+            if writer.status == .failed {
+                throw Failure.video(writer.error?.localizedDescription ?? "")
+            }
+            if !fedSomething {
+                try await Task.sleep(for: .milliseconds(5))
+            }
+        }
+
+        await writer.finishWriting()
+        guard writer.status == .completed else {
+            throw Failure.video(writer.error?.localizedDescription ?? "")
+        }
+    }
+
+    /// One video frame: the card with the progress bar filled to `progress`.
+    private static func makeFrame(card: CGImage, progress: Double, pool: CVPixelBufferPool) -> CVPixelBuffer? {
+        var pixelBuffer: CVPixelBuffer?
+        CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
+        guard let buffer = pixelBuffer else { return nil }
+
+        CVPixelBufferLockBaseAddress(buffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+
+        guard let context = CGContext(
+            data: CVPixelBufferGetBaseAddress(buffer),
+            width: size,
+            height: size,
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+        ) else { return nil }
+
+        let canvas = CGRect(x: 0, y: 0, width: size, height: size)
+        context.draw(card, in: canvas)
+
+        // Core Graphics counts y from the bottom.
+        var track = progressBar
+        track.origin.y = CGFloat(size) - progressBar.maxY
+        let radius = track.height / 2
+        context.addPath(CGPath(roundedRect: track, cornerWidth: radius, cornerHeight: radius, transform: nil))
+        context.setFillColor(UIColor.white.withAlphaComponent(0.25).cgColor)
+        context.fillPath()
+
+        var filled = track
+        filled.size.width = max(track.height, track.width * min(max(progress, 0), 1))
+        context.addPath(CGPath(roundedRect: filled, cornerWidth: radius, cornerHeight: radius, transform: nil))
+        context.setFillColor(UIColor(red: 0xC9 / 255, green: 0xF2 / 255, blue: 0x6B / 255, alpha: 1).cgColor)
+        context.fillPath()
+
+        return buffer
+    }
+
+    private static func fileName(for snap: Snap) -> String {
+        let unsafe = CharacterSet(charactersIn: "/\\:?%*|\"<>")
+        let title = snap.episode.title.components(separatedBy: unsafe).joined(separator: " ")
+        return "\(String(title.prefix(60))) – Snappy.mp4"
+    }
+}

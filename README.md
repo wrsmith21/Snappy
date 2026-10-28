@@ -26,7 +26,8 @@ What works in v0.1:
   - the **Action Button**, **Back Tap** or **Siri** ("Snap that in Snappy") through the app's Shortcut, without opening the app
 - **Gallery** of snaps showing cover art, episode, show · host, time range, and when you snapped it
   - **Play** replays just that clip, then **Keep listening** carries on from there
-  - **Share** sends the source link with a credit line: `🎧 "Episode" — Show · Host [12:04–12:34]`
+  - **Share › Share Video Clip** makes a square video of the clip (up to 60 seconds) with the cover art, credits and a progress bar, and copies a caption with the link to the full episode. LinkedIn and most social apps take video, not bare audio
+  - **Share › Share Link** sends the source link with a credit line: `🎧 "Episode" — Show · Host [12:04–12:34]`
   - **Source** opens the episode page (or the show's Apple Podcasts page)
 
 ## Project layout
